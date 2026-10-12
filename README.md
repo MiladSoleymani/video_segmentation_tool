@@ -1,161 +1,59 @@
-# video segmentation tool
+# Video Segmentation Tool
 
-A semi-automatic video segmentation tool that accelerates the preparation of image segmentation data for video sequences. This tool allows users to manually label objects in key frames and automatically propagate labels to subsequent frames using computer vision algorithms.
+A desktop tool for semi-automatic labelling of videos for semantic segmentation. The user labels a key frame by hand, and the tool propagates the labels to the other frames. Developed as my B.Sc. thesis at K. N. Toosi University of Technology, for labelling road and lane-marking videos.
 
 ## Features
 
-- **Manual Annotation Tools**
-  - Pencil tool for freehand drawing/erasing
-  - Polygon tool for precise region selection
-  - Move tool for navigation
-  - Adjustable tool size and transparency
+- **Labelling tools:** pen (left click draws, right click erases), polygon, move, zoom, label transparency and multiple label classes.
+- **Label propagation** from key frames with two algorithms:
+  - **Optical flow** (OpenCV Farnebäck): carries each mask to the next frame.
+  - **OSVOS** (One-Shot Video Object Segmentation, PyTorch): fine-tunes a network pretrained on DAVIS on the key frame, then segments every frame independently.
+- **MVC design** (PyQt6), so new tools and algorithms can be added easily.
 
-- **Semi-Automatic Segmentation**
-  - Optical Flow algorithm for motion-based label propagation
-  - OSVOS (One-Shot Video Object Segmentation) deep learning model
-  - Key frame-based workflow for efficient annotation
+## Results
 
-- **User Interface**
-  - PyQt6-based desktop application
-  - Frame-by-frame navigation
-  - Zoom controls
-  - Interactive frame selection for batch processing
-  - Multi-label support with different colors
+On a hand-labelled 200-frame highway video, starting from one key frame:
+
+| Algorithm | Road IoU (%) | Lane-marking IoU (%) |
+|---|---|---|
+| OSVOS | 86.5 ± 5.3 | **63.0 ± 7.4** |
+| Optical flow | **87.7 ± 3.2** | 20.8 ± 15.4 |
+
+Both methods label the road well. Optical flow accumulates errors and loses the thin lane markings, while OSVOS stays stable to the end of the video.
 
 ## Installation
 
-### Prerequisites
-- Python 3.8 or higher
-- CUDA-capable GPU (recommended for OSVOS)
-
-### Setup
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/VideoSegTool.git
-cd VideoSegTool
-```
-
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
+git clone https://github.com/MiladSoleymani/video_segmentation_tool.git
+cd video_segmentation_tool
 pip install -r requirements.txt
-```
 
-4. Download OSVOS pre-trained models:
-```bash
-cd osvos/models
-bash download_parent_model.sh
-bash download_vgg_weights.sh
-cd ../..
+# OSVOS pretrained weights
+cd osvos/models && bash download_parent_model.sh && bash download_vgg_weights.sh && cd ../..
 ```
 
 ## Usage
 
-### Basic Workflow
-
-1. **Launch the application:**
 ```bash
 python app.py
 ```
 
-2. **Load a video:**
-   - Click "Load Video" and select an MP4 file
-   - The video will be loaded and the first frame displayed
+1. Open an `.mp4` video.
+2. Label one or more frames with the pen or polygon tool and mark them as key frames.
+3. Click **Run**, choose the algorithm (optical flow or OSVOS) and the frames to label, and run.
 
-3. **Create annotations:**
-   - Select the Pencil or Polygon tool
-   - Draw on the video frame to create labels
-   - Use different label IDs for different objects
-   - Mark important frames as "key frames"
+A CUDA GPU is recommended for OSVOS; it falls back to the CPU otherwise.
 
-4. **Propagate labels:**
-   - Click "Run" to open the algorithm selection window
-   - Choose frames to process
-   - Select either Optical Flow or OSVOS algorithm
-   - Click "Run" to propagate labels automatically
-
-### Tools
-
-- **Move Tool**: Pan around the video frame (useful when zoomed)
-- **Pencil Tool**: Draw or erase labels freehand
-  - Left click: Draw
-  - Right click: Erase
-- **Polygon Tool**: Create precise polygon selections
-  - Click to add points
-  - Close the polygon to fill the region
-
-### Keyboard Shortcuts
-
-- `Space`: Play/pause video
-- `Left/Right Arrow`: Navigate frames
-- `+/-`: Zoom in/out
-- `K`: Mark current frame as key frame
-
-## Architecture
-
-The application follows an MVC (Model-View-Controller) pattern:
+## Project structure
 
 ```
-VideoSegTool/
-├── app.py              # Main application entry point
-├── models/             # Data models
-│   └── model.py        # Application state management
-├── views/              # UI components
-│   ├── main_view.py    # Main window interface
-│   └── run_view.py     # Algorithm execution interface
-├── controllers/        # Business logic
-│   ├── main_ctrl.py    # Core application logic
-│   ├── tools.py        # Drawing tools implementation
-│   ├── render.py       # Frame rendering
-│   └── pipeline.py     # Processing pipeline framework
-└── osvos/              # OSVOS algorithm implementation
-    ├── main.py         # OSVOS runner
-    └── vgg_osvos.py    # Neural network architecture
+app.py          entry point
+models/         application state (frames, labels)
+views/          main window and run window (PyQt6)
+controllers/    tools, rendering pipeline and main logic
+osvos/          OSVOS network and fine-tuning
 ```
-
-## Algorithms
-
-### Optical Flow
-Uses OpenCV's Farneback optical flow algorithm to track pixel movements between frames and propagate labels accordingly. Best for objects with consistent motion patterns.
-
-### OSVOS (One-Shot Video Object Segmentation)
-A deep learning approach that learns object appearance from annotated key frames and segments the same objects in other frames. Based on a VGG-16 architecture fine-tuned for video segmentation.
-
-## Dependencies
-
-- PyQt6 - GUI framework
-- PyTorch - Deep learning framework
-- OpenCV - Computer vision library
-- NumPy - Numerical computing
-- torchvision - Computer vision models for PyTorch
-- tqdm - Progress bars
-
-## Troubleshooting
-
-### OSVOS Model Not Found
-If you encounter model loading errors, ensure you've downloaded the pre-trained weights using the provided scripts in `osvos/models/`.
-
-### GPU Memory Issues
-For large videos or when using OSVOS, you may need to:
-- Process fewer frames at once
-- Reduce video resolution
-- Use CPU mode (slower but more memory efficient)
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
-
-## License
-
-[Add your license information here]
 
 ## Acknowledgments
 
-- OSVOS implementation based on the paper: "One-Shot Video Object Segmentation" by S. Caelles et al.
-- Uses the DAVIS 2016 dataset format for training and evaluation
+OSVOS: S. Caelles et al., "One-Shot Video Object Segmentation", CVPR 2017.
